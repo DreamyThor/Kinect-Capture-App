@@ -3,7 +3,6 @@ C:\MyGit\Kinect-Capture-App\KinectCaptureApp\KinectCaptureApp\bin\Debug\KinectCa
 C:\MyGit\Kinect-Capture-App\KinectCaptureApp\KinectCaptureApp\bin\Debug\KinectCaptureApp.pdb
 C:\MyGit\Kinect-Capture-App\KinectCaptureApp\KinectCaptureApp\bin\Debug\Microsoft.Kinect.dll
 C:\MyGit\Kinect-Capture-App\KinectCaptureApp\KinectCaptureApp\bin\Debug\Microsoft.Kinect.xml
-C:\MyGit\Kinect-Capture-App\KinectCaptureApp\KinectCaptureApp\obj\Debug\KinectCaptureApp.csproj.AssemblyReference.cache
 C:\MyGit\Kinect-Capture-App\KinectCaptureApp\KinectCaptureApp\obj\Debug\MainWindow.baml
 C:\MyGit\Kinect-Capture-App\KinectCaptureApp\KinectCaptureApp\obj\Debug\MainWindow.g.cs
 C:\MyGit\Kinect-Capture-App\KinectCaptureApp\KinectCaptureApp\obj\Debug\App.g.cs
