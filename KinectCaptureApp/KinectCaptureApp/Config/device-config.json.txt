@@ -1,6 +1,6 @@
-﻿{
+{
   "device_id": "cam-01",
-  "patient_id": "3",
+  "patient_id": "patient-123",
   "room": "Living Room",
   "backend_url": "https://localhost:3000"
 }

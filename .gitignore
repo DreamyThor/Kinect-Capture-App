@@ -1,6 +1,32 @@
-/KinectCaptureApp/packages
-/KinectCaptureApp/KinectCaptureApp/obj
-/KinectCaptureApp/KinectCaptureApp/obj/Debug
+# Build results
+bin/
+obj/
+
+# NuGet packages
+packages/
+*.nupkg
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Compiled outputs
+*.exe
+*.pdb
+*.ilk
 *.cache
-/KinectCaptureApp/KinectCaptureApp/bin
-/KinectCaptureApp/KinectCaptureApp/obj
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Rider
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
