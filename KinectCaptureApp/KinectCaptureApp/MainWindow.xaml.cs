@@ -1,13 +1,16 @@
 ﻿using Microsoft.Kinect;
 using System;
-using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using System.Windows.Controls;
+using System.IO;
+using System.Threading.Tasks;
+using KinectCaptureApp.Models;
+using KinectCaptureApp.Services;
 
 namespace KinectCaptureApp
+
 {
     public partial class MainWindow : Window
     {
@@ -24,6 +27,9 @@ namespace KinectCaptureApp
         private WriteableBitmap depthBitmap;
         private WriteableBitmap infraredBitmap;
 
+        private DeviceConfig _config;
+        private SignalingService _signaling;
+
         private byte[] depthPixels;
         private byte[] infraredPixels;
         private Body[] bodies;
@@ -33,7 +39,33 @@ namespace KinectCaptureApp
         public MainWindow()
         {
             InitializeComponent();
+            InitializeApp();
+        }
+
+        private async void InitializeApp()
+        {
+            LoadConfig();
+
             InitializeKinect();
+
+            await InitializeBackend();
+        }
+
+        private void LoadConfig()
+        {
+            string path = System.IO.Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "Config",
+                "device-config.json"
+            );
+
+            _config = ConfigLoader.Load(path);
+        }
+
+        private async Task InitializeBackend()
+        {
+            _signaling = new SignalingService(_config);
+            await _signaling.ConnectAsync();
         }
 
         private void InitializeKinect()

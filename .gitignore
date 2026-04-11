@@ -1,0 +1,6 @@
+/KinectCaptureApp/packages
+/KinectCaptureApp/KinectCaptureApp/obj
+/KinectCaptureApp/KinectCaptureApp/obj/Debug
+*.cache
+/KinectCaptureApp/KinectCaptureApp/bin
+/KinectCaptureApp/KinectCaptureApp/obj
