@@ -126,9 +126,9 @@ namespace KinectCaptureApp
             var colorDesc = sensor.ColorFrameSource.CreateFrameDescription(ColorImageFormat.Bgra);
 
             // ── EDIT 3: store dimensions and allocate pixel buffer for WebRTC ──
-           _colorWidth = colorDesc.Width;
-           _colorHeight = colorDesc.Height;
-           _colorPixels = new byte[_colorWidth * _colorHeight * 4];
+            _colorWidth = colorDesc.Width;
+            _colorHeight = colorDesc.Height;
+            _colorPixels = new byte[_colorWidth * _colorHeight * 4];
             // ──────────────────────────────────────────────────────────────────
 
             colorBitmap = new WriteableBitmap(
@@ -212,8 +212,8 @@ namespace KinectCaptureApp
                 {
                     return;
                 }
-                else if (_webRtc.CurrentFeed  == CameraFeedType.RGB)
-                SendFrameToWebRtc(pixels, desc.Width, desc.Height);
+                else if (_webRtc.CurrentFeed == CameraFeedType.RGB)
+                    SendFrameToWebRtc(pixels, desc.Width, desc.Height);
                 // ──────────────────────────────────────────────────────────────
             }
         }
@@ -329,7 +329,7 @@ namespace KinectCaptureApp
                 else if (_webRtc.CurrentFeed == CameraFeedType.IR)
                 {
                     SendFrameToWebRtc(
-                    ConvertIrToBgra(irCopy , desc.Width, desc.Height),
+                    ConvertIrToBgra(irCopy, desc.Width, desc.Height),
                     desc.Width,
                     desc.Height);
                 }
@@ -346,7 +346,7 @@ namespace KinectCaptureApp
             {
                 float intensity = irData[i] / max;
 
-                if(intensity < 0.01f) intensity = 0.01f;
+                if (intensity < 0.01f) intensity = 0.01f;
                 if (intensity > 1.0f) intensity = 1.0f;
 
                 byte val = (byte)(intensity * 255);
