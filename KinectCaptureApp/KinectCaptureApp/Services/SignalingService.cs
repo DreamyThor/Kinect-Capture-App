@@ -21,6 +21,7 @@ namespace KinectCaptureApp.Services
         // ── Events raised for MainWindow to wire to WebRtcService ─────────────
         public event Func<string, string, Task> OnOfferReceived;      // (sdp, caregiverSocketId)
         public event Action<string> OnIceCandidateReceived;           // (candidateJson)
+        public event Action<string> OnFeedSwitchRequested;
 
         public SignalingService(DeviceConfig config)
         {
@@ -99,6 +100,28 @@ namespace KinectCaptureApp.Services
                 catch (Exception ex)
                 {
                     Console.WriteLine("[SIGNALING] ice-candidate error: " + ex.Message);
+                }
+                return Task.CompletedTask;
+            });
+
+            _socket.On("switch-camera-feed", ctx =>
+            {
+                try
+                {
+                    var data = ctx.GetValue<SwitchFeedDto>(0);
+
+                    if (string.IsNullOrEmpty(data?.feedType))
+                    {
+                        Console.WriteLine("[SIGNALING] switch-camera-feed missing feedType");
+                        return Task.CompletedTask;
+                    }
+
+                    Console.WriteLine($"[SIGNALING] Feed switch requested: {data.feedType}");
+                    OnFeedSwitchRequested?.Invoke(data.feedType);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("[SIGNALING] switch-camera-feed error: " + ex.Message);
                 }
                 return Task.CompletedTask;
             });

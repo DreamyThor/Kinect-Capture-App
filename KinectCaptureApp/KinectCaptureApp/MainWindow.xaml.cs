@@ -43,6 +43,7 @@ namespace KinectCaptureApp
 
         private CoordinateMapper coordinateMapper;
 
+
         public MainWindow()
         {
             InitializeComponent();
@@ -100,6 +101,11 @@ namespace KinectCaptureApp
                 _webRtc.AddIceCandidate(candidateJson);
             };
 
+            _signaling.OnFeedSwitchRequested += (feedType) =>
+            {
+                _webRtc.SetFeedType(feedType);
+            };
+
             await _signaling.ConnectAsync();
         }
         // ──────────────────────────────────────────────────────────────────────
@@ -120,9 +126,9 @@ namespace KinectCaptureApp
             var colorDesc = sensor.ColorFrameSource.CreateFrameDescription(ColorImageFormat.Bgra);
 
             // ── EDIT 3: store dimensions and allocate pixel buffer for WebRTC ──
-            _colorWidth = colorDesc.Width;
-            _colorHeight = colorDesc.Height;
-            _colorPixels = new byte[_colorWidth * _colorHeight * 4];
+           _colorWidth = colorDesc.Width;
+           _colorHeight = colorDesc.Height;
+           _colorPixels = new byte[_colorWidth * _colorHeight * 4];
             // ──────────────────────────────────────────────────────────────────
 
             colorBitmap = new WriteableBitmap(
@@ -173,6 +179,12 @@ namespace KinectCaptureApp
             MessageBox.Show("All Kinect streams initialized successfully!");
         }
 
+        private void SendFrameToWebRtc(byte[] bgraFrame, int width, int height)
+        {
+            if (_webRtc == null) return;
+            _webRtc.SendFrame(bgraFrame, _colorWidth, _colorHeight);
+        }
+
         // ----------- COLOR -----------
         private void ColorReader_FrameArrived(object sender, ColorFrameArrivedEventArgs e)
         {
@@ -195,7 +207,13 @@ namespace KinectCaptureApp
 
                 frame.CopyConvertedFrameDataToArray(_colorPixels, ColorImageFormat.Bgra);
                 var pixels = (byte[])_colorPixels.Clone();
-                Task.Run(() => _webRtc?.SendFrame(pixels, _colorWidth, _colorHeight));
+
+                if (_webRtc == null)
+                {
+                    return;
+                }
+                else if (_webRtc.CurrentFeed  == CameraFeedType.RGB)
+                SendFrameToWebRtc(pixels, desc.Width, desc.Height);
                 // ──────────────────────────────────────────────────────────────
             }
         }
@@ -233,7 +251,38 @@ namespace KinectCaptureApp
                     depthPixels,
                     desc.Width * 4,
                     0);
+                ushort[] depthCopy = (ushort[])depthData.Clone();
+
+                if (_webRtc == null)
+                {
+                    return;
+                }
+                else if (_webRtc.CurrentFeed == CameraFeedType.Depth)
+                {
+                    SendFrameToWebRtc(
+                        ConvertDepthToBgra(depthData, desc.Width, desc.Height),
+                        desc.Width,
+                        desc.Height);
+                }
             }
+        }
+
+        private byte[] ConvertDepthToBgra(ushort[] depthData, int width, int height)
+        {
+            byte[] output = new byte[width * height * 4];
+
+            for (int i = 0; i < depthData.Length; i++)
+            {
+                byte intensity = (byte)(depthData[i] / 32);
+
+                int idx = i * 4;
+                output[idx] = intensity;
+                output[idx + 1] = intensity;
+                output[idx + 2] = intensity;
+                output[idx + 3] = 255;
+            }
+
+            return output;
         }
 
         // ----------- INFRARED -----------
@@ -271,7 +320,45 @@ namespace KinectCaptureApp
                     infraredPixels,
                     desc.Width * 4,
                     0);
+
+                ushort[] irCopy = (ushort[])irData.Clone();
+                if (_webRtc == null)
+                {
+                    return;
+                }
+                else if (_webRtc.CurrentFeed == CameraFeedType.IR)
+                {
+                    SendFrameToWebRtc(
+                    ConvertIrToBgra(irCopy , desc.Width, desc.Height),
+                    desc.Width,
+                    desc.Height);
+                }
             }
+        }
+
+        private byte[] ConvertIrToBgra(ushort[] irData, int width, int height)
+        {
+            byte[] output = new byte[width * height * 4];
+
+            const float max = ushort.MaxValue;
+
+            for (int i = 0; i < irData.Length; i++)
+            {
+                float intensity = irData[i] / max;
+
+                if(intensity < 0.01f) intensity = 0.01f;
+                if (intensity > 1.0f) intensity = 1.0f;
+
+                byte val = (byte)(intensity * 255);
+
+                int idx = i * 4;
+                output[idx] = val;
+                output[idx + 1] = val;
+                output[idx + 2] = val;
+                output[idx + 3] = 255;
+            }
+
+            return output;
         }
 
         // ----------- BODY / SKELETON -----------

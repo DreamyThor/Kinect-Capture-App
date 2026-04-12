@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using KinectCaptureApp.Models;
 
 namespace KinectCaptureApp.Services
 {
@@ -13,14 +14,12 @@ namespace KinectCaptureApp.Services
         // ── Events ────────────────────────────────────────────────────────────
         public event Func<string, Task> OnAnswerReady;         // SDP answer string
         public event Action<string> OnIceCandidateReady;   // candidate JSON string
+        public CameraFeedType CurrentFeed { get; set; } = CameraFeedType.RGB;
 
         // ── Internals ─────────────────────────────────────────────────────────
         private RTCPeerConnection _pc;
         private VideoEncoderEndPoint _encoder;
         private uint _timestamp = 0;
-
-        // RTP clock for VP8 is 90 kHz; sending at ~15 fps
-        private const uint TIMESTAMP_INCREMENT = 90000 / 15;
 
         // Scale Kinect 1920x1080 down — VP8 encoding at full res is too heavy
         private const int TARGET_WIDTH = 640;
@@ -138,6 +137,19 @@ namespace KinectCaptureApp.Services
             }
         }
 
+        public void SetFeedType(string feedType)
+        {
+            if (Enum.TryParse(feedType, true, out CameraFeedType parsed))
+            {
+                CurrentFeed = parsed;
+                Console.WriteLine($"[WebRTC] Feed switched to {CurrentFeed}");
+            }
+            else
+            {
+                Console.WriteLine($"[WebRTC] Invalid feed type received: {feedType}");
+            }
+        }
+
         public void Close()
         {
             try { _pc?.Close("bye"); } catch { }
@@ -155,16 +167,25 @@ namespace KinectCaptureApp.Services
 
             for (int y = 0; y < dstH; y++)
             {
-                int srcY = (int)(y * yRatio);
+                // Use Math.Min to ensure srcY is ALWAYS less than srcH
+                int srcY = Math.Min((int)(y * yRatio), srcH - 1);
+
                 for (int x = 0; x < dstW; x++)
                 {
-                    int srcX = (int)(x * xRatio);
+                    // Use Math.Min to ensure srcX is ALWAYS less than srcW
+                    int srcX = Math.Min((int)(x * xRatio), srcW - 1);
+
                     int srcIdx = (srcY * srcW + srcX) * 4;
                     int dstIdx = (y * dstW + x) * 4;
-                    dst[dstIdx] = src[srcIdx];
-                    dst[dstIdx + 1] = src[srcIdx + 1];
-                    dst[dstIdx + 2] = src[srcIdx + 2];
-                    dst[dstIdx + 3] = src[srcIdx + 3];
+
+                    // Final safety check
+                    if (srcIdx >= 0 && srcIdx + 3 < src.Length)
+                    {
+                        dst[dstIdx] = src[srcIdx];
+                        dst[dstIdx + 1] = src[srcIdx + 1];
+                        dst[dstIdx + 2] = src[srcIdx + 2];
+                        dst[dstIdx + 3] = src[srcIdx + 3];
+                    }
                 }
             }
             return dst;

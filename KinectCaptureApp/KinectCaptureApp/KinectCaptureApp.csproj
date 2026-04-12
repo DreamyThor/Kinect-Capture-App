@@ -197,6 +197,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Models\CameraFeedType.cs" />
+    <Compile Include="Models\switchFeeddto.cs" />
     <Compile Include="Models\WebRtcOfferDto.cs" />
     <Compile Include="Services\Webrtcservice.cs" />
     <Compile Include="Services\SignalingService.cs" />
