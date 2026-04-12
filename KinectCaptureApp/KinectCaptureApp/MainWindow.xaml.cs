@@ -28,6 +28,15 @@ namespace KinectCaptureApp
         private DeviceConfig _config;
         private SignalingService _signaling;
 
+        // ── EDIT 1: new fields for WebRTC ─────────────────────────────────────
+        private WebRtcService _webRtc;
+        private string _caregiverSocketId;
+        private byte[] _colorPixels;
+        private int _colorWidth;
+        private int _colorHeight;
+        private int _frameCounter = 0;
+        // ──────────────────────────────────────────────────────────────────────
+
         private byte[] depthPixels;
         private byte[] infraredPixels;
         private Body[] bodies;
@@ -60,11 +69,40 @@ namespace KinectCaptureApp
             _config = ConfigLoader.Load(path);
         }
 
+        // ── EDIT 2: wire WebRtcService and SignalingService events ─────────────
         private async Task InitializeBackend()
         {
+            _webRtc = new WebRtcService();
+
+            _webRtc.OnAnswerReady += async (sdp) =>
+            {
+                if (_caregiverSocketId != null)
+                    await _signaling.SendAnswerAsync(_caregiverSocketId, sdp);
+            };
+
+            _webRtc.OnIceCandidateReady += async (candidateJson) =>
+            {
+                if (_caregiverSocketId != null)
+                    await _signaling.SendIceCandidateAsync(_caregiverSocketId, candidateJson);
+            };
+
             _signaling = new SignalingService(_config);
+
+            _signaling.OnOfferReceived += async (sdp, caregiverSocketId) =>
+            {
+                _caregiverSocketId = caregiverSocketId;
+                Console.WriteLine($"[APP] Offer received from caregiver {caregiverSocketId}");
+                await _webRtc.HandleOfferAsync(sdp);
+            };
+
+            _signaling.OnIceCandidateReceived += (candidateJson) =>
+            {
+                _webRtc.AddIceCandidate(candidateJson);
+            };
+
             await _signaling.ConnectAsync();
         }
+        // ──────────────────────────────────────────────────────────────────────
 
         private void InitializeKinect()
         {
@@ -80,6 +118,13 @@ namespace KinectCaptureApp
 
             // ----------- COLOR STREAM -----------
             var colorDesc = sensor.ColorFrameSource.CreateFrameDescription(ColorImageFormat.Bgra);
+
+            // ── EDIT 3: store dimensions and allocate pixel buffer for WebRTC ──
+            _colorWidth = colorDesc.Width;
+            _colorHeight = colorDesc.Height;
+            _colorPixels = new byte[_colorWidth * _colorHeight * 4];
+            // ──────────────────────────────────────────────────────────────────
+
             colorBitmap = new WriteableBitmap(
                 colorDesc.Width,
                 colorDesc.Height,
@@ -143,6 +188,15 @@ namespace KinectCaptureApp
                     ColorImageFormat.Bgra);
                 colorBitmap.AddDirtyRect(new Int32Rect(0, 0, desc.Width, desc.Height));
                 colorBitmap.Unlock();
+
+                // ── EDIT 4: feed frames to WebRTC at ~15fps ────────────────────
+                _frameCounter++;
+                if (_frameCounter % 2 != 0) return;
+
+                frame.CopyConvertedFrameDataToArray(_colorPixels, ColorImageFormat.Bgra);
+                var pixels = (byte[])_colorPixels.Clone();
+                Task.Run(() => _webRtc?.SendFrame(pixels, _colorWidth, _colorHeight));
+                // ──────────────────────────────────────────────────────────────
             }
         }
 
@@ -328,6 +382,7 @@ namespace KinectCaptureApp
 
         protected override void OnClosed(EventArgs e)
         {
+            _webRtc?.Close();  // ← added
             colorReader?.Dispose();
             depthReader?.Dispose();
             infraredReader?.Dispose();
