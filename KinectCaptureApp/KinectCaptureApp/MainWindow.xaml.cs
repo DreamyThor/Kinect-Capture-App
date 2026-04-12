@@ -182,7 +182,7 @@ namespace KinectCaptureApp
         private void SendFrameToWebRtc(byte[] bgraFrame, int width, int height)
         {
             if (_webRtc == null) return;
-            _webRtc.SendFrame(bgraFrame, _colorWidth, _colorHeight);
+            _webRtc.SendFrame(bgraFrame, width, height);
         }
 
         // ----------- COLOR -----------
