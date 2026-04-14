@@ -28,7 +28,7 @@ namespace KinectCaptureApp
         private DeviceConfig _config;
         private SignalingService _signaling;
 
-        // ── EDIT 1: new fields for WebRTC ─────────────────────────────────────
+        // ──  new fields for WebRTC ─────────────────────────────────────
         private WebRtcService _webRtc;
         private string _caregiverSocketId;
         private byte[] _colorPixels;
@@ -70,7 +70,7 @@ namespace KinectCaptureApp
             _config = ConfigLoader.Load(path);
         }
 
-        // ── EDIT 2: wire WebRtcService and SignalingService events ─────────────
+        // ── wire WebRtcService and SignalingService events ─────────────
         private async Task InitializeBackend()
         {
             _webRtc = new WebRtcService();
@@ -201,7 +201,7 @@ namespace KinectCaptureApp
                 colorBitmap.AddDirtyRect(new Int32Rect(0, 0, desc.Width, desc.Height));
                 colorBitmap.Unlock();
 
-                // ── EDIT 4: feed frames to WebRTC at ~15fps ────────────────────
+                // ──  feed frames to WebRTC at ~15fps ────────────────────
                 _frameCounter++;
                 if (_frameCounter % 2 != 0) return;
 
