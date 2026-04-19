@@ -37,6 +37,11 @@ namespace KinectCaptureApp
         private int _frameCounter = 0;
         // ──────────────────────────────────────────────────────────────────────
 
+        // ── Recording ─────────────────────────────────────────────────────────
+        private RecordingService _recording;
+        private int _irFrameCounter = 0; // throttle IR to ~15fps for recording
+        // ──────────────────────────────────────────────────────────────────────
+
         private byte[] depthPixels;
         private byte[] infraredPixels;
         private Body[] bodies;
@@ -73,6 +78,7 @@ namespace KinectCaptureApp
         // ── wire WebRtcService and SignalingService events ─────────────
         private async Task InitializeBackend()
         {
+            _recording = new RecordingService();
             _webRtc = new WebRtcService();
 
             _webRtc.OnAnswerReady += async (sdp) =>
@@ -208,6 +214,9 @@ namespace KinectCaptureApp
                 frame.CopyConvertedFrameDataToArray(_colorPixels, ColorImageFormat.Bgra);
                 var pixels = (byte[])_colorPixels.Clone();
 
+                // Record RGB
+                Task.Run(() => _recording?.AddRgbFrame(pixels, desc.Width, desc.Height));
+
                 if (_webRtc == null)
                 {
                     return;
@@ -320,6 +329,14 @@ namespace KinectCaptureApp
                     infraredPixels,
                     desc.Width * 4,
                     0);
+
+                // Throttle IR recording to ~15fps (reader fires at 30fps)
+                _irFrameCounter++;
+                if (_irFrameCounter % 2 == 0)
+                {
+                    var irBgra = (byte[])infraredPixels.Clone();
+                    Task.Run(() => _recording?.AddIrFrame(irBgra, desc.Width, desc.Height));
+                }
 
                 ushort[] irCopy = (ushort[])irData.Clone();
                 if (_webRtc == null)
@@ -467,8 +484,35 @@ namespace KinectCaptureApp
             }
         }
 
+        // ── Recording button ───────────────────────────────────────────────────
+        private void RecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_recording.IsRecording)
+            {
+                _recording.Stop();
+                RecordButton.Content = "⏺  Start Recording";
+                RecordButton.Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0xCC, 0x22, 0x22));
+                RecordingStatusLabel.Text = "Not recording";
+                RecordingStatusLabel.Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0xAA, 0xAA, 0xAA));
+            }
+            else
+            {
+                _recording.Start(_config.recording_path, _config.patient_id);
+                RecordButton.Content = "⏹  Stop Recording";
+                RecordButton.Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x33, 0x33, 0x33));
+                RecordingStatusLabel.Text = $"Recording → {_config.recording_path}";
+                RecordingStatusLabel.Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0xFF, 0x44, 0x44));
+            }
+        }
+        // ──────────────────────────────────────────────────────────────────────
+
         protected override void OnClosed(EventArgs e)
         {
+            _recording?.Stop();
             _webRtc?.Close();  // ← added
             colorReader?.Dispose();
             depthReader?.Dispose();
