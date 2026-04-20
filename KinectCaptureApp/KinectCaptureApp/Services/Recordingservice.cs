@@ -36,8 +36,8 @@ namespace KinectCaptureApp.Services
             _currentRgbPath = Path.Combine(recordingPath, $"RGB_{patientId}_{timestamp}.mp4");
             _currentIrPath = Path.Combine(recordingPath, $"IR_{patientId}_{timestamp}.mp4");
 
-            _rgbProcess = StartFfmpegProcess(1920, 1080, 15, _currentRgbPath);
-            _irProcess = StartFfmpegProcess(512, 424, 15, _currentIrPath);
+            _rgbProcess = StartFfmpegProcess(1920, 1080, _currentRgbPath);
+            _irProcess = StartFfmpegProcess(512, 424, _currentIrPath);
 
             _rgbStdin = _rgbProcess.StandardInput.BaseStream;
             _irStdin = _irProcess.StandardInput.BaseStream;
@@ -108,7 +108,7 @@ namespace KinectCaptureApp.Services
 
         // ── Helpers ───────────────────────────────────────────────────────────
 
-        private static Process StartFfmpegProcess(int width, int height, int fps, string outputPath)
+        private static Process StartFfmpegProcess(int width, int height, string outputPath)
         {
             // Find ffmpeg.exe next to the running executable
             string ffmpegPath = Path.Combine(
