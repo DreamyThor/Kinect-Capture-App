@@ -16,6 +16,13 @@ namespace KinectCaptureApp.Services
         private string _currentRgbPath;
         private string _currentIrPath;
 
+        // Stopwatch-based throttle — ensures frames reach FFmpeg at exactly 15fps
+        // regardless of how irregularly the Kinect fires
+        private readonly Stopwatch _timer = new Stopwatch();
+        private long _lastRgbTicks = 0;
+        private long _lastIrTicks = 0;
+        private const long FRAME_TICKS = TimeSpan.TicksPerSecond / 15; // 1/15 s
+
         public bool IsRecording => _isRecording;
 
         // ── Start recording ───────────────────────────────────────────────────
@@ -29,13 +36,16 @@ namespace KinectCaptureApp.Services
             _currentRgbPath = Path.Combine(recordingPath, $"RGB_{patientId}_{timestamp}.mp4");
             _currentIrPath = Path.Combine(recordingPath, $"IR_{patientId}_{timestamp}.mp4");
 
-            _rgbProcess = StartFfmpegProcess(1920, 1080, 8, _currentRgbPath);
+            _rgbProcess = StartFfmpegProcess(1920, 1080, 15, _currentRgbPath);
             _irProcess = StartFfmpegProcess(512, 424, 15, _currentIrPath);
 
             _rgbStdin = _rgbProcess.StandardInput.BaseStream;
             _irStdin = _irProcess.StandardInput.BaseStream;
 
             _isRecording = true;
+            _lastRgbTicks = 0;
+            _lastIrTicks = 0;
+            _timer.Restart();
             Console.WriteLine($"[Recording] Started → {_currentRgbPath}");
             Console.WriteLine($"[Recording] Started → {_currentIrPath}");
         }
@@ -45,6 +55,7 @@ namespace KinectCaptureApp.Services
         {
             if (!_isRecording) return;
             _isRecording = false;
+            _timer.Stop();
 
             CloseProcess(_rgbStdin, _rgbProcess, "RGB");
             CloseProcess(_irStdin, _irProcess, "IR");
@@ -57,6 +68,12 @@ namespace KinectCaptureApp.Services
         public void AddRgbFrame(byte[] bgraData, int width, int height)
         {
             if (!_isRecording || _rgbStdin == null) return;
+
+            // Only accept a frame if 1/15 s has elapsed since the last one
+            long now = _timer.Elapsed.Ticks;
+            if (now - _lastRgbTicks < FRAME_TICKS) return;
+            _lastRgbTicks = now;
+
             try
             {
                 var bgr = BgraToBgr24(bgraData);
@@ -72,6 +89,12 @@ namespace KinectCaptureApp.Services
         public void AddIrFrame(byte[] bgraData, int width, int height)
         {
             if (!_isRecording || _irStdin == null) return;
+
+            // Only accept a frame if 1/15 s has elapsed since the last one
+            long now = _timer.Elapsed.Ticks;
+            if (now - _lastIrTicks < FRAME_TICKS) return;
+            _lastIrTicks = now;
+
             try
             {
                 var bgr = BgraToBgr24(bgraData);
@@ -92,18 +115,19 @@ namespace KinectCaptureApp.Services
                 AppDomain.CurrentDomain.BaseDirectory, "ffmpeg.exe");
 
             string args =
-                $"-f rawvideo " +
-                $"-pixel_format bgr24 " +
-                $"-video_size {width}x{height} " +
-                $"-framerate {fps} " +
-                $"-i pipe:0 " +
-                $"-c:v libx264 " +
-                $"-preset fast " +
-                $"-crf 23 " +
-                $"-pix_fmt yuv420p " +
-                $"-movflags +faststart " +
-                $"-y \"{outputPath}\"";
-
+               $"-use_wallclock_as_timestamps 1 " +
+               $"-fflags +genpts " +
+               $"-f rawvideo " +
+               $"-pixel_format bgr24 " +
+               $"-video_size {width}x{height} " +
+               $"-i pipe:0 " +
+               $"-c:v libx264 " +
+               $"-preset fast " +
+               $"-crf 23 " +
+               $"-pix_fmt yuv420p " +
+               $"-movflags +faststart " +
+               $"-y \"{outputPath}\"";
+         
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
